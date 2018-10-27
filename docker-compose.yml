@@ -1,0 +1,78 @@
+version: '3'
+
+services:
+  db:
+    image: mariadb
+    ports:
+    - '3306:3306'
+    volumes:
+    - database:/var/lib/mysql
+    - ./docker/mysql/upload:/mytmp
+    networks:
+    - network
+    environment:
+    - MYSQL_DATABASE=app
+    - MYSQL_USER=root
+    - MYSQL_PASSWORD=root
+    - MYSQL_ROOT_PASSWORD=root
+  php:
+    build: ./php
+    volumes:
+    - ../sources:/var/www/app
+    networks:
+    - network
+    depends_on:
+    - db
+    - maildev
+    environment:
+    - XDEBUG_CONFIG
+    - PHP_IDE_CONFIG
+  test:
+    build: ./php
+    volumes:
+    - ../sources:/var/www/app
+    networks:
+    - network
+    depends_on:
+    - db
+    - maildev
+    environment:
+    - XDEBUG_CONFIG
+    - PHP_IDE_CONFIG
+  apache:
+    build: ./apache
+    ports:
+    - '80:80'
+    - '443:443'
+    volumes:
+    - ../sources:/var/www/app
+    networks:
+      network:
+        aliases:
+        - app.local
+    depends_on:
+    - php
+  maildev:
+    image: djfarrelly/maildev
+    ports:
+    - '1080:80'
+    - '25'
+    networks:
+    - network
+  node:
+    build: ./node
+    #command: npm run watch
+    tty: true
+    volumes:
+    - ../sources:/var/www/app
+    - app_node_modules:/var/www/app/node_modules
+
+volumes:
+  database:
+    driver: local
+  app_node_modules:
+    driver: local
+
+networks:
+  network:
+    driver: bridge
